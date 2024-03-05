@@ -1,0 +1,15 @@
+FROM ubuntu
+
+WORKDIR /EPDCBot
+
+# Install Python and pip
+RUN apt-get update && apt-get install -y python3 python3-pip
+
+# Copy requirements.txt and install Python dependencies
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
+
+# Copy the rest of your bot's code
+COPY EPDCBot .
+
+CMD ["python3", "/EPDCBot/bot.py"]
