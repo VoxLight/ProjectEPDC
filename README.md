@@ -20,7 +20,7 @@ ProjectEPDC (Emulating Pokemon in Discord Communities) aims to bring the nostalg
 More details and instructions will be added soon!
 
 ## Join the Discord Community
-[Link to the Project server](#) ([To be filled](https://discord.com/invite/ryydwvjtj2))
+[Link to the Project server](https://discord.com/invite/ryydwvjtj2)
 
 ## Contributing
 Suggestions are very welcome, but contributing has not been set up for non-project members. We are actively seeking new members!
