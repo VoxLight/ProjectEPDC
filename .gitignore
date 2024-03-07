@@ -1,9 +1,11 @@
 # My Content
 # Logs
 logs
-
 # Postgres data
 data
+# Roms (get your own)
+# Pokemon Red
+EPDCBot/emulation/roms/*
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,linux,windows,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,visualstudiocode,linux,windows,macos
