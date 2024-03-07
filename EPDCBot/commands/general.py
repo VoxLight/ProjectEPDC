@@ -2,6 +2,7 @@ from nextcord import SlashApplicationCommand, Interaction, SlashOption
 from nextcord.ext import commands
 import nextcord
 import emulation
+import random
 from io import BytesIO
 
 class General:
@@ -34,6 +35,30 @@ class General:
             image_binary.seek(0)
             await interaction.send("hello", file=nextcord.File(fp=image_binary, filename="pokemon_red.png"))
 
+    async def hello(self, interaction: Interaction):
+        say_hi: str = "Howdy!"
+        await interaction.send(say_hi)
+
+    async def dice(self,
+                   interaction: Interaction,
+                   sides: int = SlashOption(
+                        name="sides", 
+                        description="How many sides do you want?", 
+                        required=True
+                    )
+                ):
+        returnMessage: str = ""
+        if(sides>0):
+            roll: int = random.randint(a=1, b=sides)
+            returnMessage = f"d{sides} rolled: {roll}."
+        else:
+            returnMessage = "Invalid number of sides."
+
+        await interaction.send(returnMessage)
+
+                
+         
+
 def setup(bot: commands.Bot):
     """
     Sets up the bot by registering slash commands.
@@ -61,4 +86,12 @@ def setup(bot: commands.Bot):
         guild_ids=bot.config.DISCORD_DEFAULT_GUILDS
     )(general_slash_commands.show)
 
-    
+    bot.slash_command(
+        name="hello",
+        guild_ids=bot.config.DISCORD_DEFAULT_GUILDS
+    )(general_slash_commands.hello)
+
+    bot.slash_command(
+        name="dice",
+        guild_ids=bot.config.DISCORD_DEFAULT_GUILDS
+    )(general_slash_commands.dice)
