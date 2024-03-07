@@ -23,6 +23,9 @@ class Config:
         self.DISCORD_DEFAULT_GUILDS: List[int] = [
             int(guild_id) for guild_id in os.environ.get('DISCORD_DEFAULT_GUILDS', '').split(',') if guild_id
         ] # Split at commas, convert to int, and remove empty strings
+
+        # Rom path Info
+        self.POKEMON_RED_PATH = "/EPDCBot/emulation/roms/Pokemon_Red.gb"
         
 
     @property
@@ -35,10 +38,10 @@ class Config:
 
 def get_logger():
     # Create a logger object.
-    logger = logging.getLogger('EPDCBot')
+    logger = logging.getLogger('nextcord')
 
     # Set the level of this logger. 
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     # Create a file handler for outputting log messages to a file
     fh = logging.FileHandler('/app/logs/bot.log')

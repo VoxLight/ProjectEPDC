@@ -2,6 +2,7 @@ import nextcord
 from nextcord.ext import commands
 import utils
 import logging
+import errors
 from commands import (
     general
 )
@@ -39,6 +40,8 @@ def main():
     log    = utils.get_logger()
     config = utils.Config()
     bot    = EPDCBot(config, log)
+    # Register the error handler
+    errors.ErrorHandler(bot)
 
     # Init commands
     general.setup(bot)
