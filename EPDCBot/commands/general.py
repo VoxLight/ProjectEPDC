@@ -3,6 +3,7 @@ from nextcord.ext import commands
 import nextcord
 import emulation
 import random
+import requests
 from io import BytesIO
 
 class General:
@@ -35,10 +36,12 @@ class General:
             image_binary.seek(0)
             await interaction.send("hello", file=nextcord.File(fp=image_binary, filename="pokemon_red.png"))
 
+    # Say Howdy!
     async def hello(self, interaction: Interaction):
         say_hi: str = "Howdy!"
         await interaction.send(say_hi)
 
+    # Die Roller
     async def dice(self,
                    interaction: Interaction,
                    sides: int = SlashOption(
@@ -47,17 +50,29 @@ class General:
                         required=True
                     )
                 ):
-        returnMessage: str = ""
+        return_message: str = ""
         if(sides>0):
             roll: int = random.randint(a=1, b=sides)
-            returnMessage = f"d{sides} rolled: {roll}."
+            return_message = f"d{sides} rolled: {roll}."
+            if(roll==sides):
+                return_message += f"\nMax roll! Nice!"
         else:
-            returnMessage = "Invalid number of sides."
+            return_message = "Invalid number of sides."
 
-        await interaction.send(returnMessage)
+        await interaction.send(return_message)
 
-                
-         
+    # Cat Fact API interaction
+    async def cat_fact(self, interaction: Interaction):
+        # Request JSON from CatFact.
+        url_catfact: str = "https://catfact.ninja/fact"
+        response = requests.get(url=url_catfact)
+
+        # Parse JSON message.
+        API_data = response.json()
+        json_catfact_fact: str = "fact" # json fact definition
+        catfact: str = API_data[json_catfact_fact] # catfact from json parse
+        await interaction.send(catfact)
+
 
 def setup(bot: commands.Bot):
     """
@@ -95,3 +110,8 @@ def setup(bot: commands.Bot):
         name="dice",
         guild_ids=bot.config.DISCORD_DEFAULT_GUILDS
     )(general_slash_commands.dice)
+
+    bot.slash_command(
+        name="cat_fact",
+        guild_ids=bot.config.DISCORD_DEFAULT_GUILDS
+    )(general_slash_commands.cat_fact)
