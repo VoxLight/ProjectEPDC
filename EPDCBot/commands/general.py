@@ -15,7 +15,8 @@ class General:
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    async def echo(self, interaction: Interaction, 
+    async def echo(self, 
+                    interaction: Interaction, 
                     message: str = SlashOption(
                         name="message", 
                         description="The message to send back.", 
