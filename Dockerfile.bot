@@ -2,18 +2,19 @@ FROM ubuntu
 
 WORKDIR /EPDCBot
 
-# Install Python and pip
+# Setup Python.
 RUN apt update
 RUN apt install -y python3 python3-pip
 
-# Install build-essential and libpq-dev for psycopg2
+# Install pre-reqs for psycopg2.
 RUN apt install -y build-essential libpq-dev
 
-# Copy requirements.txt and install Python dependencies
+# Install pip dependencies
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt
 
-# Copy the rest of your bot's code
+# Copy the bot over.
 COPY EPDCBot .
 
-CMD ["python3", "bot.py"]
+# Sleep so postgres can spool.
+CMD sleep 3 && python3 bot.py
