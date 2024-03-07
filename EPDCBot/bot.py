@@ -1,10 +1,12 @@
 import nextcord
-from nextcord.ext import commands as nextcord_commands
+from nextcord.ext import commands
 import utils
 import logging
-import commands
+from commands import (
+    general
+)
 
-class EPDCBot(nextcord_commands.Bot):
+class EPDCBot(commands.Bot):
     """
     Represents the EPDCBot, a subclass of nextcord.Client.
 
@@ -39,7 +41,7 @@ def main():
     bot    = EPDCBot(config, log)
 
     # Init commands
-    commands.general.setup(bot)
+    general.setup(bot)
 
     # Start the bot
     bot.run(config.DISCORD_BOT_TOKEN)

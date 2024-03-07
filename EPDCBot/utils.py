@@ -4,6 +4,9 @@ from typing import List
 
 
 class Config:
+    """
+    Represents the configuration settings for the application.
+    """
 
     def __init__(self):
         # The following environment variables are set in a .env file. See .env.example.
@@ -22,10 +25,12 @@ class Config:
         ] # Split at commas, convert to int, and remove empty strings
         
 
-
     @property
     def DATABASE_URI(self):
-        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}" 
+        """
+        Returns the URI for connecting to the PostgreSQL database.
+        """
+        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 
 def get_logger():

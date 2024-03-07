@@ -1,5 +1,5 @@
 from nextcord import SlashApplicationCommand, Interaction, SlashOption
-from nextcord.ext import commands as nxtcmd
+from nextcord.ext import commands
 
 async def echo(interaction: Interaction, 
                 message: str = SlashOption(
@@ -10,7 +10,16 @@ async def echo(interaction: Interaction,
             ):
         await interaction.response.send_message(message)
 
-def setup(bot: nxtcmd.Bot):
+def setup(bot: commands.Bot):
+    """
+    Sets up the bot by registering slash commands.
+
+    Args:
+        bot (nxtcmd.Bot): The bot instance.
+
+    Returns:
+        None
+    """
     # Is this hacky? Yes. Does it work? Also yes.
     # I would KILL to find a cleaner way of doing this...
     # But it's not a priority right now.
