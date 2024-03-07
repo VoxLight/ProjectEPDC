@@ -1,16 +1,27 @@
 import os
 import logging
+from typing import List
 
 
 class Config:
 
     def __init__(self):
         # The following environment variables are set in a .env file. See .env.example.
-        self.DB_USER = os.environ.get('POSTGRES_USER')
+
+        # Database connection information
+        self.DB_USER     = os.environ.get('POSTGRES_USER')
         self.DB_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
-        self.DB_NAME = os.environ.get('POSTGRES_DB')
-        self.DB_HOST = os.environ.get('POSTGRES_HOST')
-        self.DB_PORT = os.environ.get('POSTGRES_PORT')
+        self.DB_NAME     = os.environ.get('POSTGRES_DB')
+        self.DB_HOST     = os.environ.get('POSTGRES_HOST')
+        self.DB_PORT     = os.environ.get('POSTGRES_PORT')
+
+        # Discord information
+        self.DISCORD_BOT_TOKEN                 = os.environ.get('DISCORD_BOT_TOKEN')
+        self.DISCORD_DEFAULT_GUILDS: List[int] = [
+            int(guild_id) for guild_id in os.environ.get('DISCORD_DEFAULT_GUILDS', '').split(',') if guild_id
+        ] # Split at commas, convert to int, and remove empty strings
+        
+
 
     @property
     def DATABASE_URI(self):
