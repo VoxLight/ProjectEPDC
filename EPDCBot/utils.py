@@ -26,6 +26,15 @@ class Config:
 
         # Rom path Info
         self.POKEMON_RED_PATH = "/EPDCBot/emulation/roms/Pokemon_Red.gb"
+
+        """
+        Ex.
+        {
+            "fact":"cat_fact_here",
+            "length":13
+        }
+        """
+        self.CAT_FACT_API = "https://catfact.ninja/fact"
         
 
     @property

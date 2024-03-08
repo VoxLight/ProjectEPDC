@@ -1,4 +1,4 @@
-from nextcord import SlashApplicationCommand, Interaction, SlashOption
+from nextcord import Interaction, SlashOption
 from nextcord.ext import commands
 import nextcord
 import emulation
@@ -18,60 +18,101 @@ class General:
         self.bot = bot
 
     async def echo(self, 
-                    interaction: Interaction, 
-                    message: str = SlashOption(
-                        name="message", 
-                        description="The message to send back.", 
-                        required=True
-                    )
-                ):
+                        interaction: Interaction, 
+                        message: str = SlashOption(
+                            name="message", 
+                            description="The message to send back.", 
+                            required=True
+                        )
+                    ):
+            """
+            Sends the provided message back as a response.
+
+            Parameters:
+            - interaction (Interaction): The interaction object representing the user's interaction with the bot.
+            - message (str): The message to send back.
+
+            Returns:
+            None
+            """
             await interaction.send(message)
 
+
     async def show(self, interaction: Interaction):
-        await interaction.response.defer()
-        self.bot.log.info("Sending image of Pokemon Red.")
-        image = emulation.interact_with_rom(self.bot.config.POKEMON_RED_PATH)
-        with BytesIO() as image_binary:
-            image.save(image_binary, "PNG")
-            image_binary.seek(0)
-            await interaction.send("hello", file=nextcord.File(fp=image_binary, filename="pokemon_red.png"))
+            """
+            Sends an image of Pokemon Red in the interaction channel.
+
+            Parameters:
+            - interaction: The interaction object representing the user's interaction with the bot.
+
+            Returns:
+            None
+            """
+            await interaction.response.defer()
+            self.bot.log.info("Sending image of Pokemon Red.")
+            image = emulation.interact_with_rom(self.bot.config.POKEMON_RED_PATH)
+            with BytesIO() as image_binary:
+                image.save(image_binary, "PNG")
+                image_binary.seek(0)
+                await interaction.send("hello", file=nextcord.File(fp=image_binary, filename="pokemon_red.png"))
+
 
     # Say Howdy!
     async def hello(self, interaction: Interaction):
-        say_hi: str = "Howdy!"
-        await interaction.send(say_hi)
+        """
+        A method that sends a greeting message.
+
+        Parameters:
+        - interaction: The interaction object representing the user interaction.
+
+        Returns:
+        - None
+        """
+        await interaction.send("Howdy!")
+
 
     # Die Roller
-    async def dice(self,
-                   interaction: Interaction,
-                   sides: int = SlashOption(
-                        name="sides", 
-                        description="How many sides do you want?", 
-                        required=True
-                    )
-                ):
-        return_message: str = ""
-        if(sides>0):
-            roll: int = random.randint(a=1, b=sides)
-            return_message = f"d{sides} rolled: {roll}."
-            if(roll==sides):
-                return_message += f"\nMax roll! Nice!"
-        else:
-            return_message = "Invalid number of sides."
+    async def dice(self, interaction: Interaction, 
+                        sides: int = SlashOption(
+                            name="sides", 
+                            description="How many sides do you want?", 
+                            required=True,
+                            # Adding this eliminates the need for chicken checks.
+                            min_value=1,
+                            max_value=100
+                        )
+                    ):
+        """
+        Roll a dice with the specified number of sides.
+        
+        Parameters:
+        - interaction (Interaction): The interaction object representing the user's command.
+        - sides (int): The number of sides on the dice.
+        
+        Returns:
+        None
+        """
+        await interaction.send(f"d{sides} rolled: {random.randint(1, sides)}.")
 
-        await interaction.send(return_message)
 
     # Cat Fact API interaction
     async def cat_fact(self, interaction: Interaction):
-        # Request JSON from CatFact.
-        url_catfact: str = "https://catfact.ninja/fact"
-        response = requests.get(url=url_catfact)
+        """
+        Retrieves a random cat fact from the CatFact API and sends it as a message.
 
+        Parameters:
+        - interaction: The interaction object representing the user's interaction with the bot.
+
+        Returns:
+        - None
+        """
+        # Request JSON from CatFact.
+        # Added the APi URL to the config
+        response = requests.get(url=self.bot.config.CATFACT_API_URL)
+        
         # Parse JSON message.
-        API_data = response.json()
-        json_catfact_fact: str = "fact" # json fact definition
-        catfact: str = API_data[json_catfact_fact] # catfact from json parse
-        await interaction.send(catfact)
+        data = response.json()
+        await interaction.send(data["fact"])
 
 
 def setup(bot: commands.Bot):
@@ -79,7 +120,7 @@ def setup(bot: commands.Bot):
     Sets up the bot by registering slash commands.
 
     Args:
-        bot (nxtcmd.Bot): The bot instance.
+        bot (commands.Bot): The bot instance.
 
     Returns:
         None
