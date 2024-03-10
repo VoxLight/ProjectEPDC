@@ -4,7 +4,8 @@ import utils
 import logging
 import errors
 from commands import (
-    general
+    general,
+    tictactoe,
 )
 
 class EPDCBot(commands.Bot):
@@ -45,6 +46,7 @@ def main():
 
     # Init commands
     general.setup(bot)
+    tictactoe.setup(bot)
 
     # Start the bot
     bot.run(config.DISCORD_BOT_TOKEN)
