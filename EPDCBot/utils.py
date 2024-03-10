@@ -9,6 +9,8 @@ class Config:
     """
 
     def __init__(self):
+        self.DEBUG_MODE = False
+
         # The following environment variables are set in a .env file. See .env.example.
 
         # Database connection information

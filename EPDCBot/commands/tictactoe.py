@@ -1,11 +1,44 @@
 from typing import List
-from nextcord import SlashApplicationCommand, Interaction, SlashOption
+from nextcord import Interaction, SlashOption
 from nextcord.ext import commands
 import nextcord
-import emulation
-from io import BytesIO
 import nextcord
 from nextcord.ext import commands
+import random
+
+
+class TicTacToeChallenge(nextcord.ui.View):
+    
+    def __init__(self, challenger: nextcord.Member, challengee: nextcord.Member):
+        super().__init__()
+        self.player1 = challenger
+        self.player2 = challengee
+        self.accepted = False
+        self.declined = False
+        self.timeout = 5 * 60  # 5 minutes
+
+
+    @nextcord.ui.button(label="Accept", style=nextcord.ButtonStyle.success)
+    async def accept(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        if interaction.user != self.player2:
+            return
+        self.accepted = True
+        # Here we need to forward the interaction to the TicTacToe view.
+        # We can do this by sending a message with the TicTacToe view.
+        # The TicTacToe view will then handle the interaction.
+        players = [self.player1, self.player2]
+        random.shuffle(players)
+        await interaction.edit(content=f"It is now {players[0].mention}'s turn.", view=TicTacToe(*players))
+        self.stop()
+
+    @nextcord.ui.button(label="Decline", style=nextcord.ButtonStyle.danger)
+    async def decline(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        if interaction.user != self.player2:
+            return
+        self.declined = True
+        await interaction.delete_original_message(delay=5)
+        await interaction.edit(content=f"{self.player1.mention}, your challenge has been declined...", view=nextcord.ui.View())
+        self.stop()
 
 
 # Defines a custom button that contains the logic of the game.
@@ -26,40 +59,50 @@ class TicTacToeButton(nextcord.ui.Button["TicTacToe"]):
     async def callback(self, interaction: nextcord.Interaction):
         assert self.view is not None
         view: TicTacToe = self.view
-        state = view.board[self.y][self.x]
-        if state in (view.X, view.O):
-            return
 
-        if view.current_player == view.X:
+        # Make sure it's the current palyer pushing the button.
+        if interaction.user is not view.current_player_obj:
+            return
+        
+        # Check if the button has already been pressed.
+        if view.board[self.y][self.x] != 0:
+            return
+        
+        # Set the button to the current player's mark.
+        if view.current_player_mark == view.X:
             self.style = nextcord.ButtonStyle.danger
             self.label = "X"
-            self.disabled = True
-            view.board[self.y][self.x] = view.X
-            view.current_player = view.O
-            content = "It is now O's turn"
+
         else:
             self.style = nextcord.ButtonStyle.success
             self.label = "O"
-            self.disabled = True
-            view.board[self.y][self.x] = view.O
-            view.current_player = view.X
-            content = "It is now X's turn"
+
+        # Disable the button and set the board.
+        self.disabled = True
+        view.board[self.y][self.x] = view.current_player_mark
 
         winner = view.check_board_winner()
         if winner is not None:
             if winner == view.X:
-                content = "X won!"
+                content = f"{view.players[0].mention} won!"
             elif winner == view.O:
-                content = "O won!"
+                content = f"{view.players[1].mention} won!"
             else:
                 content = "It's a tie!"
 
             for child in view.children:
                 child.disabled = True
 
+            await interaction.edit(content=content, view=view)
             view.stop()
+            return
 
-        await interaction.response.edit_message(content=content, view=view)
+        # Swap and update.
+        view.swap_players()
+
+        content = f"It is now {view.current_player_obj.mention} turn."
+
+        await interaction.edit(content=content, view=view)
 
 
 # This is our actual board View
@@ -71,9 +114,12 @@ class TicTacToe(nextcord.ui.View):
     O = 1
     Tie = 2
 
-    def __init__(self):
+    def __init__(self, player1: nextcord.Member, player2: nextcord.Member):
         super().__init__()
-        self.current_player = self.X
+        # player1=X, player2=O
+        self.players = [player1, player2]
+        self.current_player_mark = self.X
+        self.current_player = 0
         self.board = [
             [0, 0, 0],
             [0, 0, 0],
@@ -86,6 +132,14 @@ class TicTacToe(nextcord.ui.View):
         for x in range(3):
             for y in range(3):
                 self.add_item(TicTacToeButton(x, y))
+    
+    @property
+    def current_player_obj(self):
+        return self.players[self.current_player]
+    
+    def swap_players(self):
+        self.current_player = int(not self.current_player)
+        self.current_player_mark = self.O if self.current_player == 1 else self.X
 
     # This method checks for the board winner -- it is used by the TicTacToeButton
     def check_board_winner(self):
@@ -136,9 +190,25 @@ class TicTacToeCommands:
         self.bot = bot
         self.bot.log.info("Tic Tac Toe Loaded.")
 
-    async def tic(interaction: Interaction):
-        """Starts a tic-tac-toe game with yourself."""
-        await interaction.send("Tic Tac Toe: X goes first", view=TicTacToe())
+
+    async def tic(self, interaction: Interaction, 
+                    member: nextcord.Member = SlashOption(
+                        name="member", 
+                        description="The member to challenge.", 
+                        required=True
+                    )
+                ):
+        """Starts a tic-tac-toe game with a friend."""
+        if interaction.user == member and not self.bot.config.DEBUG_MODE:
+            await interaction.response.send_message("You can't challenge yourself!!")
+            return
+        view = TicTacToeChallenge(interaction.user, member)
+        await interaction.send(f"{member.mention} has been challenged to TicTacToe by {interaction.user.mention}.", 
+                               view=view)
+        await view.wait()
+        if not any([view.declined, view.accepted]):
+            await interaction.edit_original_message(content=f"{interaction.user.mention}, your challenge has expired.", view=nextcord.ui.View())
+            await interaction.delete_original_message(delay=5)
             
 
 def setup(bot: commands.Bot):
@@ -154,13 +224,13 @@ def setup(bot: commands.Bot):
     # Is this hacky? Yes. Does it work? Also yes.
     # I would KILL to find a cleaner way of doing this...
     # But it's not a priority right now.
-    general_slash_commands = TicTacToeCommands(bot)
+    tictactoecommands = TicTacToeCommands(bot)
 
 
     bot.slash_command(
         name="tictactoe",
         description="Starts a game of Tic Tac Toe. (Taken from the Nextcord Docs)",
-        guild_ids=bot.config.DISCORD_DEFAULT_GUILDS
-    )(TicTacToeCommands.tic)
+        guild_ids=bot.config.DISCORD_DEFAULT_GUILDS,
+    )(tictactoecommands.tic)
 
     
