@@ -5,40 +5,7 @@ import nextcord
 import nextcord
 from nextcord.ext import commands
 import random
-
-
-class TicTacToeChallenge(nextcord.ui.View):
-    
-    def __init__(self, challenger: nextcord.Member, challengee: nextcord.Member):
-        super().__init__()
-        self.player1 = challenger
-        self.player2 = challengee
-        self.accepted = False
-        self.declined = False
-        self.timeout = 5 * 60  # 5 minutes
-
-
-    @nextcord.ui.button(label="Accept", style=nextcord.ButtonStyle.success)
-    async def accept(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        if interaction.user != self.player2:
-            return
-        self.accepted = True
-        # Here we need to forward the interaction to the TicTacToe view.
-        # We can do this by sending a message with the TicTacToe view.
-        # The TicTacToe view will then handle the interaction.
-        players = [self.player1, self.player2]
-        random.shuffle(players)
-        await interaction.edit(content=f"It is now {players[0].mention}'s turn.", view=TicTacToe(*players))
-        self.stop()
-
-    @nextcord.ui.button(label="Decline", style=nextcord.ButtonStyle.danger)
-    async def decline(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        if interaction.user != self.player2:
-            return
-        self.declined = True
-        await interaction.delete_original_message(delay=5)
-        await interaction.edit(content=f"{self.player1.mention}, your challenge has been declined...", view=nextcord.ui.View())
-        self.stop()
+from views import Challenge
 
 
 # Defines a custom button that contains the logic of the game.
@@ -180,16 +147,12 @@ class TicTacToe(nextcord.ui.View):
 
 class TicTacToeCommands:
     """
-    A class that contains general commands for the bot.
-
-    Attributes:
-        bot (commands.Bot): The bot instance.
+    A class that represents the Tic Tac Toe commands for the bot.
     """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.bot.log.info("Tic Tac Toe Loaded.")
-
 
     async def tic(self, interaction: Interaction, 
                     member: nextcord.Member = SlashOption(
@@ -198,25 +161,45 @@ class TicTacToeCommands:
                         required=True
                     )
                 ):
-        """Starts a tic-tac-toe game with a friend."""
+        """
+        Starts a tic-tac-toe game with a friend.
+        """
+
+        # Can't challenge yourself unless in debug mode.
         if interaction.user == member and not self.bot.config.DEBUG_MODE:
             await interaction.response.send_message("You can't challenge yourself!!")
             return
-        view = TicTacToeChallenge(interaction.user, member)
+        
+        # Create the Challenge view object and send the challenge.
+        challenge = Challenge(interaction.user, member)
         await interaction.send(f"{member.mention} has been challenged to TicTacToe by {interaction.user.mention}.", 
-                               view=view)
-        await view.wait()
-        if not any([view.declined, view.accepted]):
-            await interaction.edit_original_message(content=f"{interaction.user.mention}, your challenge has expired.", view=nextcord.ui.View())
-            await interaction.delete_original_message(delay=5)
-            
+                               view=challenge)
+        
+        # Wait for the challenge view to finish then mark it for deletion.
+        await challenge.wait()
+        await interaction.delete_original_message(delay=5)
 
+        # Handle for each outcome.
+        # Timeout
+        if not any([challenge.declined, challenge.accepted]):
+            await interaction.edit_original_message(content=f"{interaction.user.mention}, your challenge has expired.", view=nextcord.ui.View())
+
+        # Declined
+        elif challenge.declined: 
+            await interaction.edit_original_message(content=f"{interaction.user.mention}, your challenge has been declined.", view=nextcord.ui.View())
+
+        # Accepted
+        elif challenge.accepted: 
+            await interaction.edit_original_message(content=f"{interaction.user.mention}, your challenge has been accepted.")
+            await interaction.followup.send(content="The game is starting now!", view=TicTacToe(*challenge.randomize_player_order()))
+
+        
 def setup(bot: commands.Bot):
     """
     Sets up the bot by registering slash commands.
 
     Args:
-        bot (nxtcmd.Bot): The bot instance.
+        bot (commands.Bot): The bot instance.
 
     Returns:
         None

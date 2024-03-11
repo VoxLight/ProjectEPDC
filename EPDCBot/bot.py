@@ -4,8 +4,8 @@ import utils
 import logging
 import errors
 from commands import (
-    general,
     tictactoe,
+    rock_paper_scissors
 )
 
 class EPDCBot(commands.Bot):
@@ -45,7 +45,7 @@ def main():
     errors.ErrorHandler(bot)
 
     # Init commands
-    general.setup(bot)
+    rock_paper_scissors.setup(bot)
     tictactoe.setup(bot)
 
     # Start the bot

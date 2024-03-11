@@ -1,1 +1,1 @@
-from . import general
+from . import tictactoe, rock_paper_scissors
