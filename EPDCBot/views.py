@@ -25,6 +25,10 @@ class Challenge(nextcord.ui.View):
             players = [self.challenger, self.challengee]
             random.shuffle(players)
             return players
+    
+    def force_accept(self):
+        self.accepted = True
+        self.stop()
 
 
     @nextcord.ui.button(label="Accept", style=nextcord.ButtonStyle.success)

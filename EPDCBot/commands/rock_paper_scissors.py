@@ -3,6 +3,7 @@ import nextcord
 from nextcord.ext import commands
 from views import Challenge
 import asyncio
+import random
 
 class RockPaperScissors(nextcord.ui.View):
     ROCK = 1
@@ -19,6 +20,8 @@ class RockPaperScissors(nextcord.ui.View):
         self.bot = bot
         self.players = [player1, player2]
         self.player_moves = {player: None for player in self.players}
+
+
 
     def get_player_selection(self, player: nextcord.Member) -> int | None:
             """
@@ -84,7 +87,23 @@ class RockPaperScissors(nextcord.ui.View):
             Returns:
                 None
             """
-            if all(move != None for move in self.player_moves.values()):
+            # x is % of how often opponent can cheat
+            odds_of_winning = lambda x: (1-x) * .3333333
+            if self.bot.user in self.players:
+                if random.random() < odds_of_winning(.2):
+                    # Fairly select a random move.
+                    self.set_player_selection(self.bot.user, random.choice([1, 2, 3]))
+                else:
+                    # Set the bot's move to the winning move
+
+                    winning_moves = {1: 2, 2: 3, 3: 1}
+                    # Fully wait for other player's move to process
+                    await asyncio.sleep(1)
+                    other_players_move = self.get_player_selection(self.players[0])
+                    self.set_player_selection(self.bot.user, winning_moves[other_players_move])
+                    await self.spawn_results(interaction)
+            
+            elif all(move != None for move in self.player_moves.values()):
                 await self.spawn_results(interaction)
 
     async def spawn_results(self, interaction: Interaction) -> None:
@@ -166,6 +185,12 @@ class RockPaperScissorsCommands:
         challenge = Challenge(interaction.user, member)
         await interaction.send(f"{member.mention} has been challenged to Rock Paper Scissors by {interaction.user.mention}.",
                                view=challenge)
+        
+        if challenge.challengee == self.bot.user:
+            await asyncio.sleep(1)
+            async with interaction.channel.typing():
+                await asyncio.sleep(1)
+                challenge.force_accept()
 
         # Wait for the challenge view to finish and mark it for deletion
         await challenge.wait()
