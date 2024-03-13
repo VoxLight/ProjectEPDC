@@ -17,4 +17,4 @@ RUN pip3 install -r requirements.txt
 COPY EPDCBot .
 
 # Sleep so postgres can spool.
-CMD sleep 3 && python3 bot.py
+CMD python3 bot.py

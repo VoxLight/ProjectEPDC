@@ -1,0 +1,25 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres
+    env_file:
+      - .env
+    volumes:
+      - ./data:/var/lib/postgresql/data
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100k"
+        max-file: "3"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - db

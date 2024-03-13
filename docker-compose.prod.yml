@@ -11,7 +11,7 @@ services:
   bot:
     build:
       context: .
-      dockerfile: Dockerfile.bot
+      dockerfile: Dockerfile.prod
     env_file:
       - .env
     logging:
