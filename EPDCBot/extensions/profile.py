@@ -31,4 +31,5 @@ class ProfileCommands(commands.Cog):
 
 
 def setup(bot: commands.Bot) -> None:
-    bot.add_cog(ProfileCommands(bot))
+    # bot.add_cog(ProfileCommands(bot))
+    pass

@@ -1,8 +1,7 @@
 import nextcord
 from nextcord.ext import commands
 import utils
-import os
-import database
+from database import DatabaseConnection
 
 class EPDCBot(commands.Bot):
     """
@@ -15,7 +14,7 @@ class EPDCBot(commands.Bot):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, intents=nextcord.Intents.all(), **kwargs)
-        self.db_manager = database.DatabaseManager()
+        self.database = DatabaseConnection()
 
     async def on_ready(self):
         """
@@ -25,31 +24,18 @@ class EPDCBot(commands.Bot):
         """
 
         # Setup the Database
-        await database.setup()
+        await self.database.setup()
 
         # Now do a database sweep and make sure everyone in the server is also in the database.
         for guild in self.guilds:
             for member in guild.members:
-                session: database.AsyncSession = await database.get_session()
-                await database.get_or_create_member(session, member.id, member.name)
-                await session.commit()
-                await session.close()
+                async with self.database.get_session() as session:
+                    await self.database.get_or_create_member(session, member)
 
         
         utils.logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
         utils.logger.info('------')
 
-    def load_cogs_from_directory(self, directory: str):
-        """
-        Loads all cogs from a directory.
-
-        Args:
-            directory (str): The directory to load cogs from.
-        """
-        for filename in os.listdir(directory):
-            # ignore hidden files and non-python files
-            if not filename.startswith("_") and filename.endswith('.py'):
-                self.load_extension(f'{directory}.{filename[:-3]}')
         
 
 
@@ -60,7 +46,7 @@ def main():
     bot = EPDCBot()
 
     # Init Cogs
-    bot.load_cogs_from_directory('extensions')
+    bot.load_extensions_from_module('extensions', stop_at_error=True,)
 
     # Start the bot
     bot.run(utils.Config.DISCORD_BOT_TOKEN)

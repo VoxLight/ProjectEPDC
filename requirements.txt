@@ -1,5 +1,5 @@
 # Discord
-nextcord                # NextCord is a fork of discord.py, a Python wrapper for the Discord API
+nextcord>=2.6.0               # NextCord is a fork of discord.py, a Python wrapper for the Discord API
 
 # Emulation
 pyboy                   # PyBoy is a python GB emulator

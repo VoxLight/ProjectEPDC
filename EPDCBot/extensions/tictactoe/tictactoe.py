@@ -9,7 +9,7 @@ from exceptions import (
     NotYoursToTouchException,
     NotYourTurnException
 )
-from views import Confirmation
+from EPDCBot.reusable_views import Confirmation
 
 
 
