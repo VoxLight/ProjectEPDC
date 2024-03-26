@@ -1,9 +1,11 @@
 from nextcord import Interaction, SlashOption
 import nextcord
 from nextcord.ext import commands
-from views import Challenge
+from views import Confirmation
 import asyncio
 import random
+import utils
+import exceptions
 
 class RockPaperScissors(nextcord.ui.View):
     ROCK = 1
@@ -14,6 +16,25 @@ class RockPaperScissors(nextcord.ui.View):
         PAPER: "📄",
         SCISSORS: "✂️"
     }
+
+    # rock paper scissors Information
+    # A value between 0 and 1 that states how hard it is to win against the bot.
+    # This value is eventually passed to the RPS_ODD_OF_WINNING function.
+    RPS_DIFFICULTY_LEVEL = 1
+
+    @staticmethod
+    def RPS_odds_of_winning() -> float:
+        """
+        Returns the odds of winning a game of tic-tac-toe given the chance to cheat.
+
+        args:
+            chance_to_cheat: float - The percentage of the time the opponent can cheat. A value between 0 and 1.
+
+        returns:
+            float - The odds of winning the game.
+        """
+        # y = (1 - x) / 3
+        return (1-RockPaperScissors.RPS_DIFFICULTY_LEVEL) / 3
 
     def __init__(self, bot: commands.Bot, player1: nextcord.Member, player2: nextcord.Member):
         super().__init__()
@@ -78,58 +99,57 @@ class RockPaperScissors(nextcord.ui.View):
             return self.players[1]
 
     async def check_both_players_moved(self, interaction: Interaction) -> None:
-            """
-            Checks if both players have made a move.
-            
-            Args:
-                interaction (Interaction): The interaction object representing the user interaction.
-            
-            Returns:
-                None
-            """
-            # x is % of how often opponent can cheat
-            odds_of_winning = lambda x: (1-x) * .3333333
-            if self.bot.user in self.players:
-                if random.random() < odds_of_winning(.2):
-                    # Fairly select a random move.
-                    self.set_player_selection(self.bot.user, random.choice([1, 2, 3]))
-                else:
-                    # Set the bot's move to the winning move
+        """
+        Checks if both players have made a move.
+        
+        Args:
+            interaction (Interaction): The interaction object representing the user interaction.
+        
+        Returns:
+            None
+        """
+        if self.bot.user in self.players:
 
-                    winning_moves = {1: 2, 2: 3, 3: 1}
-                    # Fully wait for other player's move to process
-                    await asyncio.sleep(1)
-                    other_players_move = self.get_player_selection(self.players[0])
-                    self.set_player_selection(self.bot.user, winning_moves[other_players_move])
-                    await self.spawn_results(interaction)
-            
-            elif all(move != None for move in self.player_moves.values()):
+            if random.random() < RockPaperScissors.RPS_odds_of_winning():
+                # Fairly select a random move.
+                self.set_player_selection(self.bot.user, random.choice([1, 2, 3]))
+            else:
+                # Set the bot's move to the winning move against the other player's move.
+                winning_moves = {1: 2, 2: 3, 3: 1}
+
+                # A Humanized amount of delay
+                await asyncio.sleep(random.random() + random.randint(0, 2))
+                other_players_move = self.get_player_selection(interaction.user)
+                self.set_player_selection(self.bot.user, winning_moves[other_players_move])
                 await self.spawn_results(interaction)
+            
+        elif all(move != None for move in self.player_moves.values()):
+            await self.spawn_results(interaction)
 
     async def spawn_results(self, interaction: Interaction) -> None:
-            
-            await interaction.followup.edit_message(message_id=interaction.message.id, content="Both players have made their move! Get ready to see the results!", view=nextcord.ui.View())
-            await asyncio.sleep(3)
-            content = f"""
+        await interaction.followup.edit_message(message_id=interaction.message.id, content="Both players have made their move! Get ready to see the results!", view=nextcord.ui.View())
+        await asyncio.sleep(2)
+        content = f"""
     The results are in! Here's what each player chose:
     {self.players[0].mention}: {self.get_move_emoji(self.player_moves[self.players[0]])} vs. {self.players[1].mention}: {self.get_move_emoji(self.player_moves[self.players[1]])}
     """
-            winner = self.get_winner()
-            if winner is None:
-                content += "\nIt's a tie!"
-            else:
-                content += f"\n{winner.mention} won!"
-            await interaction.followup.edit_message(message_id=interaction.message.id, content=content, view=nextcord.ui.View())
-            self.stop()
+        winner = self.get_winner()
+        if winner is None:
+            content += "\nIt's a tie!"
+        else:
+            content += f"\n{winner.mention} won!"
+        await interaction.followup.edit_message(message_id=interaction.message.id, content=content, view=nextcord.ui.View())
+        self.stop()
 
     @nextcord.ui.button(label="🪨", style=nextcord.ButtonStyle.secondary)
     async def rock(self, button: nextcord.ui.Button, interaction: nextcord.Interaction) -> None:
         if interaction.user not in self.players:
-            return
+            raise exceptions.NotYoursToTouchException(f"{interaction.user.name}You are not a part of this game. see /rps to start your own!")
         
         if self.get_player_selection(interaction.user) is None:
             self.set_player_selection(interaction.user, RockPaperScissors.ROCK)
-            self.bot.log.info(f"{interaction.user} has selected Rock.")
+        else:
+            raise exceptions.NotYourTurnException("You have already submitted a move. Please be patient and wait for your opponent to make their move.")
 
         await interaction.edit(content=f"{interaction.user.mention} has made their move!")
         await self.check_both_players_moved(interaction)
@@ -137,10 +157,12 @@ class RockPaperScissors(nextcord.ui.View):
     @nextcord.ui.button(label="📄", style=nextcord.ButtonStyle.success)
     async def paper(self, button: nextcord.ui.Button, interaction: nextcord.Interaction) -> None:
         if interaction.user not in self.players:
-            return
+            raise exceptions.NotYoursToTouchException(f"You are not a part of this game. see /rps to start your own!")
+
         if self.get_player_selection(interaction.user) is None:
             self.set_player_selection(interaction.user, RockPaperScissors.PAPER)
-            self.bot.log.info(f"{interaction.user} has selected Paper.")
+        else:
+            raise exceptions.NotYourTurnException("You have already submitted a move. Please be patient and wait for your opponent to make their move.")
 
         await interaction.edit(content=f"{interaction.user.mention} has made their move!")
         await self.check_both_players_moved(interaction)
@@ -148,16 +170,18 @@ class RockPaperScissors(nextcord.ui.View):
     @nextcord.ui.button(label="✂️", style=nextcord.ButtonStyle.primary)
     async def scissors(self, button: nextcord.ui.Button, interaction: nextcord.Interaction) -> None:
         if interaction.user not in self.players:
-            return
+            raise exceptions.NotYoursToTouchException(f"You are not a part of this game. see /rps to start your own!")
+        
         if self.get_player_selection(interaction.user) is None:
             self.set_player_selection(interaction.user, RockPaperScissors.SCISSORS)
-            self.bot.log.info(f"{interaction.user} has selected Scissors.")
+        else:
+            raise exceptions.NotYourTurnException("You have already submitted a move. Please be patient and wait for your opponent to make their move.")
 
         await interaction.edit(content=f"{interaction.user.mention} has made their move!")
         await self.check_both_players_moved(interaction)
 
 
-class RockPaperScissorsCommands:
+class RockPaperScissorsCommands(commands.Cog):
     """
     A class that contains general commands for the bot.
 
@@ -167,8 +191,13 @@ class RockPaperScissorsCommands:
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.bot.log.info("Rock Paper Scissors Loaded.")
+        utils.logger.info("Rock Paper Scissors Cog Loaded.")
 
+    @nextcord.slash_command(
+            name="rps", 
+            description="Starts a game of Rock Paper Scissors with a friend.", 
+            guild_ids=utils.Config.DISCORD_DEFAULT_GUILDS
+    )
     async def rps(self, interaction: Interaction, member: nextcord.Member = SlashOption(
         name="member",
         description="The member to challenge.",
@@ -182,19 +211,19 @@ class RockPaperScissorsCommands:
             return
 
         # Create the Challenge view object and send the challenge.
-        challenge = Challenge(interaction.user, member)
+        challenge = Confirmation(interaction.user, member)
         await interaction.send(f"{member.mention} has been challenged to Rock Paper Scissors by {interaction.user.mention}.",
                                view=challenge)
         
+        # Do an auto accept if the bot is challenged.
         if challenge.challengee == self.bot.user:
-            await asyncio.sleep(1)
+            await asyncio.sleep(.5)
             async with interaction.channel.typing():
-                await asyncio.sleep(1)
+                await asyncio.sleep(1.2)
                 challenge.force_accept()
 
-        # Wait for the challenge view to finish and mark it for deletion
+        # Wait for the challenge view to finish.
         await challenge.wait()
-        await interaction.delete_original_message(delay=5)
 
         # Timeout
         if not any([challenge.declined, challenge.accepted]):
@@ -211,16 +240,13 @@ class RockPaperScissorsCommands:
             await interaction.edit_original_message(content=f"{interaction.user.mention}, your challenge has been accepted.",
                                                     view=nextcord.ui.View())
 
-            # Send a new message to start the game
-            await interaction.followup.send(content="The game is starting now!",
-                                            view=RockPaperScissors(self.bot, *challenge.randomize_player_order()))
+            # Start the game!
+            rps = RockPaperScissors(self.bot, *challenge.randomize_player_order())
+            await interaction.edit_original_message(content="The game is starting now!",
+                                            view=rps)
+            await rps.wait()
+            await interaction.delete_original_message(delay=5)
 
 
 def setup(bot: commands.Bot) -> None:
-    rps_commands = RockPaperScissorsCommands(bot)
-
-    bot.slash_command(
-        name="rps",
-        description="Starts a game of Rock Paper Scissors.",
-        guild_ids=bot.config.DISCORD_DEFAULT_GUILDS,
-    )(rps_commands.rps)
+    bot.add_cog(RockPaperScissorsCommands(bot))

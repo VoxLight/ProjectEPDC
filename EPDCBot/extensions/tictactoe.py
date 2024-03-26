@@ -1,17 +1,25 @@
 from typing import List
+
+import nextcord
 from nextcord import Interaction, SlashOption
 from nextcord.ext import commands
-import nextcord
-import nextcord
-from nextcord.ext import commands
-import random
-from views import Challenge
+
+import utils
+from exceptions import (
+    NotYoursToTouchException,
+    NotYourTurnException
+)
+from views import Confirmation
+
 
 
 # Defines a custom button that contains the logic of the game.
 # The ['TicTacToe'] bit is for type hinting purposes to tell your IDE or linter
 # what the type of `self.view` is. It is not required.
 class TicTacToeButton(nextcord.ui.Button["TicTacToe"]):
+
+    view: "TicTacToe"
+
     def __init__(self, x: int, y: int):
         # A label is required, but we don't need one so a zero-width space is used
         # The row parameter tells the View which row to place the button under.
@@ -25,18 +33,20 @@ class TicTacToeButton(nextcord.ui.Button["TicTacToe"]):
     # This is part of the "meat" of the game logic
     async def callback(self, interaction: nextcord.Interaction):
         assert self.view is not None
-        view: TicTacToe = self.view
 
-        # Make sure it's the current palyer pushing the button.
-        if interaction.user is not view.current_player_obj:
+        # Error handling logic.
+        # Make sure it's the current player pushing the button.
+        if interaction.user not in self.view.players:
+            raise NotYoursToTouchException(f'"{interaction.user.name}" is not part of the Tic Tac Toe game [{",".join(self.view.players)}].')
+        if interaction.user != self.view.current_player_obj:
+            raise NotYourTurnException(f'"{interaction.user.name}" it is not your turn.')
+        # Check if the button has already been pressed.
+        if self.view.board[self.y][self.x] != 0:
             return
         
-        # Check if the button has already been pressed.
-        if view.board[self.y][self.x] != 0:
-            return
         
         # Set the button to the current player's mark.
-        if view.current_player_mark == view.X:
+        if self.view.current_player_mark == self.view.X:
             self.style = nextcord.ButtonStyle.danger
             self.label = "X"
 
@@ -46,30 +56,30 @@ class TicTacToeButton(nextcord.ui.Button["TicTacToe"]):
 
         # Disable the button and set the board.
         self.disabled = True
-        view.board[self.y][self.x] = view.current_player_mark
+        self.view.board[self.y][self.x] = self.view.current_player_mark
 
-        winner = view.check_board_winner()
+        winner = self.view.check_board_winner()
         if winner is not None:
-            if winner == view.X:
-                content = f"{view.players[0].mention} won!"
-            elif winner == view.O:
-                content = f"{view.players[1].mention} won!"
+            if winner == self.view.X:
+                content = f"{self.view.players[0].mention} won!"
+            elif winner == self.view.O:
+                content = f"{self.view.players[1].mention} won!"
             else:
                 content = "It's a tie!"
 
-            for child in view.children:
+            for child in self.view.children:
                 child.disabled = True
 
-            await interaction.edit(content=content, view=view)
-            view.stop()
+            await interaction.edit(content=content, view=self.view)
+            self.view.stop()
             return
 
         # Swap and update.
-        view.swap_players()
+        self.view.swap_players()
 
-        content = f"It is now {view.current_player_obj.mention} turn."
+        content = f"It is now {self.view.current_player_obj.mention} turn."
 
-        await interaction.edit(content=content, view=view)
+        await interaction.edit(content=content, view=self.view)
 
 
 # This is our actual board View
@@ -145,15 +155,20 @@ class TicTacToe(nextcord.ui.View):
         return None
 
 
-class TicTacToeCommands:
+class TicTacToeCommands(commands.Cog):
     """
     A class that represents the Tic Tac Toe commands for the bot.
     """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.bot.log.info("Tic Tac Toe Loaded.")
+        utils.logger.info("Tic Tac Toe Cog Loaded.")
 
+    @nextcord.slash_command(
+        name="tictactoe",
+        description="Starts a game of Tic Tac Toe. (Taken from the Nextcord Docs)",
+        guild_ids=utils.Config.DISCORD_DEFAULT_GUILDS,
+    )
     async def tic(self, interaction: Interaction, 
                     member: nextcord.Member = SlashOption(
                         name="member", 
@@ -171,13 +186,12 @@ class TicTacToeCommands:
             return
         
         # Create the Challenge view object and send the challenge.
-        challenge = Challenge(interaction.user, member)
+        challenge = Confirmation(interaction.user, member)
         await interaction.send(f"{member.mention} has been challenged to TicTacToe by {interaction.user.mention}.", 
                                view=challenge)
         
-        # Wait for the challenge view to finish then mark it for deletion.
+        # Wait for the challenge view to finish.
         await challenge.wait()
-        await interaction.delete_original_message(delay=5)
 
         # Handle for each outcome.
         # Timeout
@@ -191,7 +205,10 @@ class TicTacToeCommands:
         # Accepted
         elif challenge.accepted: 
             await interaction.edit_original_message(content=f"{interaction.user.mention}, your challenge has been accepted.")
-            await interaction.followup.send(content="The game is starting now!", view=TicTacToe(*challenge.randomize_player_order()))
+            ttt = TicTacToe(*challenge.randomize_player_order())
+            await interaction.edit_original_message(content="The game is starting now!", view=ttt)
+            await ttt.wait()
+            await interaction.delete_original_message(delay=5)
 
         
 def setup(bot: commands.Bot):
@@ -204,16 +221,7 @@ def setup(bot: commands.Bot):
     Returns:
         None
     """
-    # Is this hacky? Yes. Does it work? Also yes.
-    # I would KILL to find a cleaner way of doing this...
-    # But it's not a priority right now.
-    tictactoecommands = TicTacToeCommands(bot)
+    bot.add_cog(TicTacToeCommands(bot))
 
-
-    bot.slash_command(
-        name="tictactoe",
-        description="Starts a game of Tic Tac Toe. (Taken from the Nextcord Docs)",
-        guild_ids=bot.config.DISCORD_DEFAULT_GUILDS,
-    )(tictactoecommands.tic)
 
     

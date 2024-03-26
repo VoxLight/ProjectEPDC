@@ -1,12 +1,8 @@
 import nextcord
 from nextcord.ext import commands
 import utils
-import logging
-import errors
-from commands import (
-    tictactoe,
-    rock_paper_scissors
-)
+import os
+import database
 
 class EPDCBot(commands.Bot):
     """
@@ -17,11 +13,9 @@ class EPDCBot(commands.Bot):
         log (logging.Logger): The logger object for logging bot events.
     """
 
-    def __init__(self, config: utils.Config, log: logging.Logger):
-        super().__init__(intents=nextcord.Intents.all())  # Set up intents
-
-        self.config: utils.Config = config
-        self.log: logging.Logger = log
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, intents=nextcord.Intents.all(), **kwargs)
+        self.db_manager = database.DatabaseManager()
 
     async def on_ready(self):
         """
@@ -29,8 +23,33 @@ class EPDCBot(commands.Bot):
 
         This method logs the bot's user information.
         """
-        self.log.info(f'Logged in as {self.user} (ID: {self.user.id})')
-        self.log.info('------')
+
+        # Setup the Database
+        await database.setup()
+
+        # Now do a database sweep and make sure everyone in the server is also in the database.
+        for guild in self.guilds:
+            for member in guild.members:
+                session: database.AsyncSession = await database.get_session()
+                await database.get_or_create_member(session, member.id, member.name)
+                await session.commit()
+                await session.close()
+
+        
+        utils.logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
+        utils.logger.info('------')
+
+    def load_cogs_from_directory(self, directory: str):
+        """
+        Loads all cogs from a directory.
+
+        Args:
+            directory (str): The directory to load cogs from.
+        """
+        for filename in os.listdir(directory):
+            # ignore hidden files and non-python files
+            if not filename.startswith("_") and filename.endswith('.py'):
+                self.load_extension(f'{directory}.{filename[:-3]}')
         
 
 
@@ -38,18 +57,13 @@ class EPDCBot(commands.Bot):
 def main():
 
     # Set up the logger and config
-    log    = utils.get_logger()
-    config = utils.Config()
-    bot    = EPDCBot(config, log)
-    # Register the error handler
-    errors.ErrorHandler(bot)
+    bot = EPDCBot()
 
-    # Init commands
-    rock_paper_scissors.setup(bot)
-    tictactoe.setup(bot)
+    # Init Cogs
+    bot.load_cogs_from_directory('extensions')
 
     # Start the bot
-    bot.run(config.DISCORD_BOT_TOKEN)
+    bot.run(utils.Config.DISCORD_BOT_TOKEN)
 
 
 if __name__ == "__main__":

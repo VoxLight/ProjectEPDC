@@ -1,6 +1,15 @@
-psycopg2
-nextcord
-pyboy
-pillow
-aiofiles
-gino
+# Discord
+nextcord                # NextCord is a fork of discord.py, a Python wrapper for the Discord API
+
+# Emulation
+pyboy                   # PyBoy is a python GB emulator
+pillow                  # Python Imaging Library
+
+# Database
+asyncpg                 # asyncpg is a fast PostgreSQL database client library for Python/asyncio
+psycopg2                # psycopg2 is a PostgreSQL database adapter for the Python programming language
+# sqlalchemy            # The Python SQL Toolkit and Object-Relational Mapper
+sqlalchemy[asyncio]     # The Python SQL Toolkit and Object-Relational Mapper
+
+# Misc
+aiofiles                # aiofiles is an Apache2 licensed library, written in Python, for handling local disk files in asyncio applications.
